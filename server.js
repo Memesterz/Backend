@@ -20,23 +20,23 @@ const createTables = db.transaction(() => {
 
 createTables()
 
-app.use(function (req,res,next) {
-    res.locals.errors = []
-    try {
-    const decoded = jwt.verify(req.cookies.LoginCookie,process.jwt.JWTSECRET)
-    res.user = decoded
-    } catch(err) {
-        req.user = false
-    }
-    res.locals.user = req.user
-    console.log(req.user)
-    next()
-})
-
 app.set("view engine", "ejs")
 app.use(express.urlencoded({extended:false}))
 app.use(express.static("public"))
 app.use(cookieParser())
+
+app.use(function (req,res,next) {
+    res.locals.errors = []
+    try {
+    const decoded = jwt.verify(req.cookies.LoginCookie,process.env.JWTSECRET)
+    req.user = decoded
+    } catch(err) {
+        req.user = false
+    }
+    res.locals.user = req.user
+    console.log("Middleware", req.user)
+    next()
+})
 
 app.get("/", (req,res) => {
     if (req.user) {
@@ -86,7 +86,6 @@ app.post("/login", (req,res) => {
 
     res.cookie("LoginCookie", ourTokenValue,{
         httpOnly: true,
-        secure: true,
         sameSite: "strict",
         maxAge: 1000 * 60 * 60 * 24
     })
@@ -106,6 +105,10 @@ app.post("/register", (req,res) => {
     if (req.body.username && req.body.username.length < 3) errors.push("Username Too Short must be 3 Characters")
     if (req.body.username && req.body.username.length > 10) errors.push("Username Too Long must be less than 10 Characters")
     if (req.body.username && !req.body.username.match(/^[a-zA-Z0-9]+$/)) errors.push("Username has Invalid Characters")
+    
+    const usernameLookup = db.prepare("SELECT * FROM users WHERE username = ?")
+    const usernameCheck = usernameLookup.get(req.body.username)
+    if (usernameCheck) errors.push("That Username is Taken")
 
     if (!req.body.password) res.locals.errors.push("No Password")
     if (req.body.password && req.body.password.length < 3) errors.push("Password Too Short must be 3 Characters")
@@ -127,7 +130,6 @@ app.post("/register", (req,res) => {
 
     res.cookie("LoginCookie", ourTokenValue,{
         httpOnly: true,
-        secure: true,
         sameSite: "strict",
         maxAge: 1000 * 60 * 60 * 24
     })
