@@ -1,5 +1,6 @@
 require("dotenv").config()
 const jwt = require('jsonwebtoken')
+const sanitizeHTML = require("sanitize-html")
 const express = require("express")
 const db = require("better-sqlite3")("ourApp.db")
 db.pragma("journal_mode = wal")
@@ -16,6 +17,16 @@ const createTables = db.transaction(() => {
         )
         
         `).run()
+        db.prepare(`
+            CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Date TEXT,
+            title STRING NOT NULL,
+            body TEXT NOT NULL,
+            authorid INTEGER,
+            FOREIGN KEY (authorid) REFERENCES users (id)
+            )
+            `).run()
 })
 
 createTables()
@@ -91,6 +102,47 @@ app.post("/login", (req,res) => {
     })
 
     res.redirect("/")
+})
+
+function LoginCheck(req,res,next) {
+    if (req.user) {
+        return next()
+    }
+    res.redirect("/")
+}
+
+function PostValidation(req) {
+    const errors = []
+
+    if (typeof req.body.title !== "string") red.body.title = ""
+    if (typeof req.body.body !== "string") red.body.body = ""
+
+    req.body.title = sanitizeHTML(req.body.title.trim(), {allowedTags: [], allowedAttributes: {}})
+    req.body.body = sanitizeHTML(req.body.body.trim(), {allowedTags: [], allowedAttributes: {}})
+
+    if (!req.body.title) errors.push("No Title")
+    if (!req.body.body) errors.push("No Body")
+
+    return errors
+}
+
+app.get("/create-post", LoginCheck, (req,res) => {
+    res.render("create-post")
+})
+
+app.post("/create-post", LoginCheck, (req,res) => {
+    const errors = PostValidation(req)
+
+    if (errors.length) {
+        return res.render("create-post", {errors})
+    }
+
+    const ourStatement = db.prepare(`INSERT INTO posts (title,body,authorid,Date) VALUES (?,?,?,?)`)
+    const result = ourStatement.run(req.body.title, req.body.body,req.body.userid, new Date().toISOString())
+    
+    const getPost = db.prepare("SELECT * FROM posts WHERE ROWID = ?")
+    const Post = getPost.get(result.lastInsertRowid)
+    res.redirect(`/post/${Post.id}`)
 })
 
 app.post("/register", (req,res) => {
