@@ -178,7 +178,14 @@ app.post("/register", (req,res) => {
     const lookup = db.prepare("SELECT * FROM users WHERE ROWID = ?")
     const OurUser = lookup.get(result.lastInsertRowid)
 
-    const ourTokenValue = jwt.sign({exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,userid: OurUser.id, username: OurUser.username}, process.env.JWTSECRET)
+    const ourTokenValue = jwt.sign(
+        {
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+        userid: OurUser.id,
+        username: OurUser.username
+        }, 
+        process.env.JWTSECRET
+    )
 
     res.cookie("LoginCookie", ourTokenValue,{
         httpOnly: true,
