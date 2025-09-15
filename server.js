@@ -114,8 +114,8 @@ function LoginCheck(req,res,next) {
 function PostValidation(req) {
     const errors = []
 
-    if (typeof req.body.title !== "string") red.body.title = ""
-    if (typeof req.body.body !== "string") red.body.body = ""
+    if (typeof req.body.title !== "string") req.body.title = ""
+    if (typeof req.body.body !== "string") req.body.body = ""
 
     req.body.title = sanitizeHTML(req.body.title.trim(), {allowedTags: [], allowedAttributes: {}})
     req.body.body = sanitizeHTML(req.body.body.trim(), {allowedTags: [], allowedAttributes: {}})
